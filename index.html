@@ -29,6 +29,16 @@ input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--l
 .card-nav{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .card-nav button{min-width:96px}
  .prolabel{font-weight:900;color:#7a6030;margin:-3px 0 14px}
+
+.sheet-consent-box{background:#fffdf8;border:1px solid #d8decb;border-radius:14px;padding:12px 14px;margin:0 0 12px;font-size:13px;color:#3e4638}
+.sheet-consent-box label{display:flex;align-items:flex-start;gap:8px;font-weight:800}
+.sheet-consent-box input{flex:0 0 auto;margin-top:4px}
+.sheet-consent-note{margin-top:5px;color:#687061;font-size:12px}
+.sheet-status{display:none;margin:0 0 12px;padding:11px 13px;border-radius:12px;background:#eef2e8;color:#334124;font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.sheet-status.show{display:block}
+.sheet-status.error{background:#fbece7;color:#7a3020}
+@media(max-width:760px){.sheet-consent-box{font-size:12px}}
+
 .summary{display:none;margin-top:14px} .summary.show{display:block} .summary-sec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0} .summary-sec h4{margin:0 0 7px;color:var(--olive-dark)} .summary-sec ul{margin:0;padding-left:18px} .empty{color:var(--muted);font-style:italic}
 @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.hero h1{font-size:25px}.status{margin-left:0}.card{min-height:auto;padding:17px}.nav-bottom{align-items:flex-start;flex-direction:column}.navgroup{width:100%}.navgroup button{flex:1}.card-nav{justify-content:stretch}.card-nav button{flex:1}}
 @media print{body{background:#fff}.toolbar,.nav-bottom,.notice{display:none!important}.wrap{max-width:none;padding:0}.slider{display:block;overflow:visible}.card{display:block;min-height:auto;box-shadow:none;margin-bottom:10px;break-inside:avoid}}
@@ -45,6 +55,7 @@ input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--l
 
 <div class="toolbar">
 <button class="primary" type="button" onclick="saveLocal()">임시 저장</button>
+<button class="primary" type="button" id="submitSheetsBtn" onclick="submitToSheets()">Google Sheets 제출</button>
 <button class="secondary" type="button" onclick="loadLocal()">불러오기</button>
 <button class="dark" type="button" onclick="makeSummary()">체크 요약 보기</button>
 <button class="secondary" type="button" onclick="window.print()">인쇄 / PDF 저장</button>
@@ -52,6 +63,11 @@ input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--l
 <div id="indicator" class="status">1 / 29</div><div id="status" class="status">체크 0개</div>
 </div>
 
+<div class="sheet-consent-box">
+<label><input type="checkbox" id="sheetConsent"> 작성한 응답을 설문 운영자의 Google Sheets에 저장하는 데 동의합니다.</label>
+<div class="sheet-consent-note">성명, 신체정보, 증상, 진단·복용 정보 등 입력한 내용이 온라인으로 전송될 수 있습니다. 동의하지 않으면 제출하지 마세요.</div>
+</div>
+<div id="sheetSubmitStatus" class="sheet-status" role="status" aria-live="polite"></div>
 <form id="checkForm">
 <div id="slider" class="slider">
 <section class="card basic-card" data-section="기본정보">
@@ -372,6 +388,94 @@ function makeSummary(){
  });
  summary.classList.add('show');summary.scrollIntoView({behavior:'smooth'});
 }
+
+
+// Google Sheets integration. Paste the deployed Apps Script Web App URL here.
+const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzyXbMlgGVpw1-7sEExts-fDIEii3L_e4cr4fOqnrXyPDxpluyF2CAq9-lNTX-zjpCQ/exec';
+let sheetsSubmitting = false;
+
+function getFieldLabel(el, name){
+ const field=el.closest('.field');
+ const fieldLabel=field?.querySelector('label');
+ if(fieldLabel && fieldLabel.textContent.trim()) return fieldLabel.textContent.trim();
+ const card=el.closest('.card');
+ let node=el.closest('label') || el;
+ while(node && node !== card){
+  let sibling=node.previousElementSibling;
+  while(sibling){
+   if(sibling.classList?.contains('subhead')) return sibling.textContent.trim();
+   sibling=sibling.previousElementSibling;
+  }
+  node=node.parentElement;
+ }
+ const section=card?.querySelector('.section-title h2, h2');
+ return section?.textContent.trim() || name;
+}
+
+function collectSurveyFields(){
+ const grouped=new Map();
+ [...form.querySelectorAll('input[name], textarea[name], select[name]')].forEach(el=>{
+  const key=el.name;
+  if(!key) return;
+  if(!grouped.has(key)) grouped.set(key,{key,label:getFieldLabel(el,key),elements:[]});
+  grouped.get(key).elements.push(el);
+ });
+ return [...grouped.values()].map(group=>{
+  const els=group.elements;
+  const first=els[0];
+  let value='';
+  if(first.type==='checkbox') value=els.filter(el=>el.type==='checkbox'&&el.checked).map(el=>el.value);
+  else if(first.type==='radio') value=(els.find(el=>el.type==='radio'&&el.checked)?.value)||'';
+  else value=first.value ?? '';
+  return {key:group.key,label:group.label,value};
+ });
+}
+
+function setSheetStatus(message,isError=false){
+ const el=document.getElementById('sheetSubmitStatus');
+ el.textContent=message;
+ el.classList.add('show');
+ el.classList.toggle('error',isError);
+}
+
+async function submitToSheets(){
+ if(sheetsSubmitting) return;
+ if(SHEETS_WEB_APP_URL==='PASTE_APPS_SCRIPT_WEB_APP_URL_HERE' || !/^https:\/\/script\.google\.com\/macros\/s\//.test(SHEETS_WEB_APP_URL)){
+  setSheetStatus('아직 Google Apps Script 웹 앱 주소가 설정되지 않았습니다. index.html의 SHEETS_WEB_APP_URL에 배포 URL을 입력한 뒤 GitHub에 다시 올려주세요.',true);
+  return;
+ }
+ if(!document.getElementById('sheetConsent').checked){
+  setSheetStatus('Google Sheets에 건강 관련 응답을 저장하는 데 동의해야 제출할 수 있습니다.',true);
+  document.getElementById('sheetConsent').focus();
+  return;
+ }
+ if(!confirm('작성한 응답을 Google Sheets로 전송할까요? 전송 후에는 운영자가 시트에서 직접 관리해야 합니다.')) return;
+ const btn=document.getElementById('submitSheetsBtn');
+ sheetsSubmitting=true; btn.disabled=true; btn.textContent='전송 요청 중…';
+ try{
+  const payload={
+   version:'wft-sheets-v1',
+   submissionId:(window.crypto && typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():(Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)),
+   pageTitle:document.title,
+   submittedAtClient:new Date().toISOString(),
+   fields:collectSurveyFields()
+  };
+  // Apps Script cross-origin responses are opaque in no-cors mode; this confirms
+  // that the browser handed off the request, not that the sheet write succeeded.
+  await fetch(SHEETS_WEB_APP_URL,{
+   method:'POST',mode:'no-cors',redirect:'follow',
+   headers:{'Content-Type':'text/plain;charset=utf-8'},
+   body:JSON.stringify(payload)
+  });
+  setSheetStatus('전송 요청을 보냈습니다. 브라우저에서는 실제 저장 성공 여부를 확인할 수 없으므로, 운영자는 Google Sheets의 응답 탭에 새 행이 추가되었는지 확인해 주세요.');
+ }catch(err){
+  console.error('Google Sheets submission failed',err);
+  setSheetStatus('전송 요청을 보내지 못했습니다. 인터넷 연결과 Apps Script 웹 앱 URL을 확인한 뒤 다시 시도해 주세요.',true);
+ }finally{
+  sheetsSubmitting=false; btn.disabled=false; btn.textContent='Google Sheets 제출';
+ }
+}
+
 updateIndicator();updateStatus();
 </script>
 </body>
