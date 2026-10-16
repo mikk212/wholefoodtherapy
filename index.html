@@ -64,7 +64,7 @@ input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--l
 </div>
 
 <div class="sheet-consent-box">
-<label><input type="checkbox" id="sheetConsent"> 작성한 응답을 설문 운영자의 Google Sheets에 저장하는 데 동의합니다.</label>
+<label><input type="checkbox" id="sheetConsent" onchange="const b=document.getElementById('sheetConsentBottom');if(b)b.checked=this.checked"> 작성한 응답을 설문 운영자의 Google Sheets에 저장하는 데 동의합니다.</label>
 <div class="sheet-consent-note">성명, 신체정보, 증상, 진단·복용 정보 등 입력한 내용이 온라인으로 전송될 수 있습니다. 동의하지 않으면 제출하지 마세요.</div>
 </div>
 <div id="sheetSubmitStatus" class="sheet-status" role="status" aria-live="polite"></div>
@@ -308,10 +308,12 @@ input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--l
 </div></section><section class="card pro-card" data-section="28."><div class="section-title"><h2>28.</h2></div><div class="prolabel">※ 전문가영역입니다.</div>
 <label class="plaincheck"><input type="checkbox" name="pro_exam" value="맥이 뜨는가 / 가라앉는가">맥이 뜨는가 / 가라앉는가</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="맥이 빠른가 / 느린가">맥이 빠른가 / 느린가</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="맥이 강한가 / 약한가">맥이 강한가 / 약한가</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="맥이 팽팽한가 / 느슨한가">맥이 팽팽한가 / 느슨한가</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="피부와 근육의 탄력">피부와 근육의 탄력</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="체취와 땀 냄새">체취와 땀 냄새</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="흉협부를 눌렀을 때 저항감과 답답함">흉협부를 눌렀을 때 저항감과 답답함</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="명치의 비만·경결·압통">명치의 비만·경결·압통</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="배 전체의 탄력과 긴장도">배 전체의 탄력과 긴장도</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="누르면 편한 통증인지, 누르면 더 아픈 통증인지">누르면 편한 통증인지, 누르면 더 아픈 통증인지</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="왼쪽 아랫배의 급결·압통">왼쪽 아랫배의 급결·압통</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="오른쪽 아랫배의 종창·경결·압통">오른쪽 아랫배의 종창·경결·압통</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="아랫배 냉감">아랫배 냉감</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="복부의 진수음·장명">복부의 진수음·장명</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="사지의 냉감·부종·진전">사지의 냉감·부종·진전</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="피부의 탄력·건조·거칠기·부종">피부의 탄력·건조·거칠기·부종</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="얼굴색·충혈·붉어짐·검어짐·황색">얼굴색·충혈·붉어짐·검어짐·황색</label><label class="plaincheck"><input type="checkbox" name="pro_exam" value="전신의 한열과 상하 한열의 불균형">전신의 한열과 상하 한열의 불균형</label>
 <div class="field"><label>전문가 메모</label><textarea name="pro_note"></textarea></div>
+<div class="sheet-consent-box"><label><input type="checkbox" id="sheetConsentBottom" onchange="document.getElementById('sheetConsent').checked=this.checked"> 작성한 응답을 설문 운영자의 Google Sheets에 저장하는 데 동의합니다.</label><div class="sheet-consent-note">성명, 신체정보, 증상, 진단·복용 정보 등 입력한 내용이 온라인으로 전송될 수 있습니다.</div></div>
 <div class="card-nav">
   <button class="secondary" type="button" onclick="prevSlide()">← 이전</button>
   <button class="secondary" type="button" onclick="saveLocal()">임시 저장</button>
   <button class="dark" type="button" onclick="makeSummary()">체크 요약 보기</button>
+  <button class="primary" type="button" onclick="submitToSheets()">Google Sheets 제출</button>
 </div></section>
 </div>
 
